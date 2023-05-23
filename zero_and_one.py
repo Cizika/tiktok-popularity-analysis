@@ -125,39 +125,6 @@ if __name__ == '__main__':
 
     palette = sns.color_palette()
 
-    def plot_continuous(df, *, name: str  =None ,**kwplot):
-        fig, (ax0, ax1) = plt.subplots(2,
-                                    figsize=(8, 6),
-                                    sharex=True,
-                                    gridspec_kw={"height_ratios": (.15, .85)})
-
-        whis = 1.5
-        series = df[name]
-        sns.boxplot(x=series, whis=whis, color=palette[0], ax=ax0)
-        sns.histplot(series, stat='density', color=palette[0], ax=ax1, **kwplot)
-
-        _count, mean, _std, min_, q1, q2, q3, max_ = (series.describe().to_list())
-        iqr = q3 - q1
-        whis1 = np.nan_to_num(series[series < q1 - whis * iqr].max(), nan=min_)
-        whis2 = np.nan_to_num(series[series > q3 + whis * iqr].min(), nan=max_)
-
-        ax1.axvline(mean, color=palette[3], linestyle='dashed')
-        ax1.axvline(q2, color=palette[1], linestyle='dashdot')
-        ax1.axvline(q1, color=palette[1], linewidth=.7, linestyle='dashdot')
-        ax1.axvline(q3, color=palette[1], linewidth=.7, linestyle='dashdot')
-        ax1.axvline(whis1, color=palette[1], linewidth=.5, linestyle='dashdot')
-        ax1.axvline(whis2, color=palette[1], linewidth=.5, linestyle='dashdot')
-
-        ax0.set_xlabel('')
-        ax1.set_ylabel('density')
-
-        ax0.set_yticks([], [])
-        ax0.set_xticks([], [])
-
-        fig.suptitle(name)
-
-        return fig
-    
     df = (
         pd
         .read_csv('https://raw.githubusercontent.com/Cizika/tiktok-popularity-analysis/main/tiktok.csv')
@@ -166,21 +133,84 @@ if __name__ == '__main__':
     )
     y = df['popularity']
 
+    fig, [(ax0, ax1), (ax2, ax3)] = plt.subplots(
+        2, 2,
+        figsize=(12, 6),
+        sharex=True,
+        sharey='row',
+        gridspec_kw={"height_ratios": (.15, .85)}
+    )
+
+    bins = 50
+    whis = 1.5
+    y = df['popularity']
+    sns.boxplot(x=y, whis=whis, color=palette[0], ax=ax0)
+    sns.histplot(y, stat='density', bins=bins, color=palette[0], ax=ax2)
+
+    _count, mean, std, min_, q1, q2, q3, max_ = (y.describe().to_list())
+    iqr = q3 - q1
+    whis1 = np.nan_to_num(y[y < q1 - whis * iqr].max(), nan=min_)
+    whis2 = np.nan_to_num(y[y > q3 + whis * iqr].min(), nan=max_)
+
+    ax2.axvline(mean, color=palette[3], linestyle='dashed')
+    ax2.axvline(q2, color=palette[1], linestyle='dashdot')
+    ax2.axvline(q1, color=palette[1], linewidth=.7, linestyle='dashdot')
+    ax2.axvline(q3, color=palette[1], linewidth=.7, linestyle='dashdot')
+    ax2.axvline(whis1, color=palette[1], linewidth=.5, linestyle='dashdot')
+    ax2.axvline(whis2, color=palette[1], linewidth=.5, linestyle='dashdot')
+
+    ax2.annotate(fr"$\overline{{x}} = {mean:.4f}$", xy=(.1, 3.0))
+    ax2.annotate(fr"$s^2 = {std ** 2:.4f}$", xy=(.1, 2.75))
+    ax2.annotate(fr"$Q_1 = {q1:.4f}$", xy=(.1, 2.5))
+    ax2.annotate(fr"$Q_2 = {q2:.4f}$", xy=(.1, 2.25))
+    ax2.annotate(fr"$Q_3 = {q3:.4f}$", xy=(.1, 2.0))
+
+    ax0.set_xlabel('')
+    ax2.set_ylabel('density')
+
+    ax0.set_yticks([], [])
+
+    fig.suptitle('popularity')
+
     alpha, gamma, mu, phi, solution = find_params(y)
     a, b = params_to_ab(mu, phi)
     
     print(f"Result {alpha = :.6f} {gamma = :.6f} {mu = :.6f} {phi = :.6f}")
     print(solution)
 
-    # Aqui inicia a parte onde o plot acontece - usando a função que já existe e editando a imagem
-    fig = plot_continuous(df, name='popularity')
-    ax0, ax1 = fig.get_axes()
-
     bernoulli_rv = stats.bernoulli(gamma)
     beta_rv = stats.beta(a, b)
 
-    x = np.linspace(0, 1, 100)[1:-1]
-    y = (1 - alpha) * beta_rv.pdf(x)
-    sns.lineplot(x=x, y=y, ax=ax1, color=palette[4])
+    N = 100_000
+    N_BER = int(alpha * N)
+    N_BETA = N - N_BER
+    ber = alpha * bernoulli_rv.rvs(N_BER)
+    beta = (1 - alpha) *beta_rv.rvs(N_BETA)
+    samples = pd.Series(np.append(ber, beta))
+    sns.boxplot(x=samples, whis=whis, color=palette[0], ax=ax1)
+    sns.histplot(samples, stat='density', bins=bins, color=palette[0], ax=ax3)
+
+    _count, mean, std, min_, q1, q2, q3, max_ = (samples.describe().to_list())
+    iqr = q3 - q1
+    whis1 = np.nan_to_num(samples[samples < q1 - whis * iqr].max(), nan=min_)
+    whis2 = np.nan_to_num(samples[samples > q3 + whis * iqr].min(), nan=max_)
+
+    ax3.axvline(mean, color=palette[3], linestyle='dashed')
+    ax3.axvline(q2, color=palette[1], linestyle='dashdot')
+    ax3.axvline(q1, color=palette[1], linewidth=.7, linestyle='dashdot')
+    ax3.axvline(q3, color=palette[1], linewidth=.7, linestyle='dashdot')
+    ax3.axvline(whis1, color=palette[1], linewidth=.5, linestyle='dashdot')
+    ax3.axvline(whis2, color=palette[1], linewidth=.5, linestyle='dashdot')
+
+    ax3.annotate(fr"$\hat{{\mu}} = {mean:.4f}$", xy=(.1, 3.0))
+    ax3.annotate(fr"$\hat{{\sigma^2}} = {std ** 2:.4f}$", xy=(.1, 2.75))
+    ax3.annotate(fr"$Q_1 = {q1:.4f}$", xy=(.1, 2.5))
+    ax3.annotate(fr"$Q_2 = {q2:.4f}$", xy=(.1, 2.25))
+    ax3.annotate(fr"$Q_3 = {q3:.4f}$", xy=(.1, 2.0))
+
+    ax3.annotate(fr"$\alpha = {alpha:.4f}$", xy=(.7, 3.0))
+    ax3.annotate(fr"$\gamma = {gamma:.4f}$", xy=(.7, 2.75))
+    ax3.annotate(fr"$a = {a:.4f}$", xy=(.7, 2.5))
+    ax3.annotate(fr"$b = {b:.4f}$", xy=(.7, 2.25))
 
     plt.show()
