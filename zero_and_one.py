@@ -143,6 +143,9 @@ if __name__ == '__main__':
 
     bins = 50
     whis = 1.5
+    
+    ax0.set_title(r'data')
+    ax1.set_title(r'$fit: f(x) = \alpha \cdot \mathbb{1}_{\{0,1\}} \cdot \mathcal{Ber}(x; \gamma) + (1 - \alpha) \cdot (1 - \mathbb{1}_{\{0,1\}}) \cdot \mathcal{Beta}(x; a, b)$')
     y = df['popularity']
     sns.boxplot(x=y, whis=whis, color=palette[0], ax=ax0)
     sns.histplot(y, stat='density', bins=bins, color=palette[0], ax=ax2)
